@@ -52,22 +52,24 @@ func New(path string) (*Store, error) {
 			if p.Idempotency != nil {
 				s.idempotency = p.Idempotency
 			}
-			// Recovery currently treats the first broken frame as an incomplete tail.
-			// This is unsafe when the damaged frame is in the middle of the journal:
-			// the latest projection below can then outlive the event prefix.
+			// Recover the full, untampered journal or fail closed. A broken
+			// event chain — whether mid-journal or at the tail — means the
+			// persisted job/credential/idempotency projections may reflect
+			// events that no longer verify. Truncating events to a valid
+			// prefix while keeping those projections would desync the timeline
+			// (prefix only) from the detail view (full projection), so reject
+			// the state entirely instead of exposing inconsistent data.
 			if !Replay(p.Events) {
-				valid := 0
-				prev := ""
-				for i, e := range p.Events {
-					if (i > 0 && e.Sequence != p.Events[i-1].Sequence+1) || e.PrevDigest != prev || e.Digest != domain.EventRecordDigest(e) {
-						break
-					}
-					valid++
-					prev = e.Digest
-				}
-				p.Events = p.Events[:valid]
-				p.Sequence = int64(valid)
-				p.PreviousDigest = prev
+				return nil, domain.ErrIntegrity
+			}
+			var lastSeq int64
+			var lastPrev string
+			for _, e := range p.Events {
+				lastSeq = e.Sequence
+				lastPrev = e.Digest
+			}
+			if p.Sequence != lastSeq || p.PreviousDigest != lastPrev {
+				return nil, domain.ErrIntegrity
 			}
 			s.events = p.Events
 			s.seq = p.Sequence
