@@ -24,6 +24,14 @@ func New(store *journal.Store) *Service {
 	return &Service{store: store, now: func() time.Time { return time.Now().UTC() }, idem: map[string]string{}}
 }
 func newID() string { b := make([]byte, 16); _, _ = rand.Read(b); return hex.EncodeToString(b) }
+func cloneCueResults(in []domain.CueEditResult) []domain.CueEditResult {
+	if in == nil {
+		return nil
+	}
+	out := make([]domain.CueEditResult, len(in))
+	copy(out, in)
+	return out
+}
 
 type CreateJobInput struct {
 	ProgramTitle   string `json:"programTitle"`
@@ -148,7 +156,7 @@ func (s *Service) BatchCues(id string, ops []domain.CueEdit, expected int64, act
 	if e != nil {
 		return nil, nil, e
 	}
-	rec := journal.IdempotencyRecord{Actor: actor, Digest: digest, JobID: id, Version: j.Version, CueResults: res, JobResult: domain.CloneJob(j)}
+	rec := journal.IdempotencyRecord{Actor: actor, Digest: digest, JobID: id, Version: j.Version, CueResults: cloneCueResults(res), JobResult: domain.CloneJob(j)}
 	if key != "" {
 		e = s.store.SaveIdempotent(j, "cue.batch", actor, ops, key, rec)
 	} else {

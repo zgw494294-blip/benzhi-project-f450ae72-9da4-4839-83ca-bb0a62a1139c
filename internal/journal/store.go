@@ -115,6 +115,16 @@ func cloneIdempotencyRecord(in IdempotencyRecord) IdempotencyRecord {
 	if in.JobResult != nil {
 		out.JobResult = domain.CloneJob(in.JobResult)
 	}
+	out.CueResults = cloneCueResults(in.CueResults)
+	return out
+}
+
+func cloneCueResults(in []domain.CueEditResult) []domain.CueEditResult {
+	if in == nil {
+		return nil
+	}
+	out := make([]domain.CueEditResult, len(in))
+	copy(out, in)
 	return out
 }
 func (s *Store) Get(id string) (*domain.ReviewJob, error) {
