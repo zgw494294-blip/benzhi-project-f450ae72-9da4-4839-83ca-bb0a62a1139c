@@ -2,6 +2,7 @@ package application
 
 import (
 	"caption-delivery-qc/internal/domain"
+	"context"
 	"errors"
 )
 
@@ -20,10 +21,13 @@ const (
 	CodeCandidateDigest ErrorCode = "candidate_digest_conflict"
 	CodeBaseline        ErrorCode = "rework_baseline_conflict"
 	CodeChecklist       ErrorCode = "checklist_digest_conflict"
+	CodeContext         ErrorCode = "context_canceled"
 )
 
 func Code(err error) ErrorCode {
 	switch {
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return CodeContext
 	case errors.Is(err, domain.ErrNotFound):
 		return CodeNotFound
 	case errors.Is(err, domain.ErrConflict):

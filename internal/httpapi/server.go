@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"caption-delivery-qc/internal/application"
 	"caption-delivery-qc/internal/domain"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -86,6 +87,8 @@ func write(w http.ResponseWriter, status int, v any) {
 }
 func errStatus(e error) int {
 	switch {
+	case errors.Is(e, context.Canceled), errors.Is(e, context.DeadlineExceeded):
+		return 499
 	case errors.Is(e, domain.ErrNotFound):
 		return 404
 	case errors.Is(e, domain.ErrConflict), errors.Is(e, domain.ErrIdempotencyConflict), errors.Is(e, domain.ErrImmutableConflict):

@@ -110,10 +110,7 @@ func (s *Service) CreateJobContext(ctx context.Context, in CreateJobInput) (*dom
 		return nil, err
 	}
 	j := domain.NewJob(newID(), in.ProgramTitle, in.Language, in.DeliveryBatch, in.RuleSet, in.Actor, in.DurationMs, s.now())
-	if err := s.store.Create(j, key, journal.IdempotencyRecord{Actor: in.Actor, Digest: digest, JobID: j.ID}); err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
+	if err := s.store.Create(ctx, j, key, journal.IdempotencyRecord{Actor: in.Actor, Digest: digest, JobID: j.ID}); err != nil {
 		return nil, err
 	}
 	if in.IdempotencyKey != "" {

@@ -2,6 +2,7 @@ package journal
 
 import (
 	"caption-delivery-qc/internal/domain"
+	"context"
 	"encoding/json"
 	"os"
 	"sync"
@@ -73,13 +74,19 @@ func (s *Store) persistLocked() error {
 	}
 	return os.Rename(tmp, s.path)
 }
-func (s *Store) Create(j *domain.ReviewJob, key string, record ...IdempotencyRecord) error {
+func (s *Store) Create(ctx context.Context, j *domain.ReviewJob, key string, record ...IdempotencyRecord) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if key != "" {
 		if _, ok := s.idempotency[key]; ok {
 			return nil
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	oldEvents, oldSeq, oldPrev := len(s.events), s.seq, s.prev
 	s.jobs[j.ID] = clone(j)
