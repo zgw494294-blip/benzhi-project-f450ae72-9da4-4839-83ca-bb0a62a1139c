@@ -14,19 +14,17 @@ import (
 )
 
 type Service struct {
-	store       *journal.Store
-	mu          sync.Mutex
-	now         func() time.Time
-	idem        map[string]string
-	detailCache map[string]Detail
+	store *journal.Store
+	mu    sync.Mutex
+	now   func() time.Time
+	idem  map[string]string
 }
 
 func New(store *journal.Store) *Service {
 	return &Service{
-		store:       store,
-		now:         func() time.Time { return time.Now().UTC() },
-		idem:        map[string]string{},
-		detailCache: map[string]Detail{},
+		store: store,
+		now:   func() time.Time { return time.Now().UTC() },
+		idem:  map[string]string{},
 	}
 }
 func newID() string { b := make([]byte, 16); _, _ = rand.Read(b); return hex.EncodeToString(b) }

@@ -2,7 +2,6 @@ package application
 
 import (
 	"caption-delivery-qc/internal/domain"
-	"encoding/json"
 	"sort"
 	"time"
 )
@@ -38,27 +37,9 @@ func snapshotView(jobID string, snap domain.CandidateSnapshot) CandidateSnapshot
 	return CandidateSnapshotView{JobID: jobID, Revision: snap.Revision, ReviewRound: snap.ReviewRound, SubmittedBy: snap.SubmittedBy, SubmittedAt: snap.SubmittedAt, ContentDigest: snap.ContentDigest, CueCount: len(cues), Cues: cues}
 }
 
-func cloneDetail(d Detail) Detail {
-	out := d
-	out.Job = domain.CloneJob(d.Job)
-	out.Events = make([]domain.Event, len(d.Events))
-	for i, event := range d.Events {
-		out.Events[i] = event
-		out.Events[i].Data = append(json.RawMessage(nil), event.Data...)
-	}
-	if d.Credential != nil {
-		credential := *d.Credential
-		out.Credential = &credential
-	}
-	return out
-}
-
 func (s *Service) Detail(id string) (Detail, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if cached, ok := s.detailCache[id]; ok {
-		return cloneDetail(cached), nil
-	}
 	j, e := s.Get(id)
 	if e != nil {
 		return Detail{}, e
@@ -68,6 +49,5 @@ func (s *Service) Detail(id string) (Detail, error) {
 	if c, ok := s.store.Credential(id); ok {
 		d.Credential = &c
 	}
-	s.detailCache[id] = cloneDetail(d)
-	return cloneDetail(d), nil
+	return d, nil
 }
