@@ -214,7 +214,13 @@ func (s *Store) Credential(id string) (domain.Credential, bool) {
 func (s *Store) Events(id string) []domain.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.events
+	out := make([]domain.Event, 0, len(s.events))
+	for _, e := range s.events {
+		if e.JobID == id {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 type EventQuery struct {
