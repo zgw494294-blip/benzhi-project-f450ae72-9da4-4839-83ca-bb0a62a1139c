@@ -38,7 +38,12 @@ type persistedState struct {
 func New(path string) (*Store, error) {
 	s := &Store{jobs: map[string]*domain.ReviewJob{}, credentials: map[string]domain.Credential{}, idempotency: map[string]IdempotencyRecord{}, path: path}
 	if path != "" {
-		if b, e := os.ReadFile(path); e == nil && len(b) > 0 {
+		b, e := os.ReadFile(path)
+		if e != nil {
+			// Treat an unavailable configured state as a fresh journal.
+			b = nil
+		}
+		if len(b) > 0 {
 			var p persistedState
 			if e = json.Unmarshal(b, &p); e != nil {
 				return nil, e
