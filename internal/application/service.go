@@ -3,6 +3,7 @@ package application
 import (
 	"caption-delivery-qc/internal/domain"
 	"caption-delivery-qc/internal/journal"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -75,6 +76,13 @@ func (s *Service) ReviseMetadata(id string, next domain.MetadataRevision, expect
 }
 
 func (s *Service) CreateJob(in CreateJobInput) (*domain.ReviewJob, error) {
+	return s.CreateJobContext(context.Background(), in)
+}
+
+func (s *Service) CreateJobContext(ctx context.Context, in CreateJobInput) (*domain.ReviewJob, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e := domain.ValidateMetadata(in.ProgramTitle, in.Language, in.DeliveryBatch, in.RuleSet, in.DurationMs); e != nil {
@@ -98,8 +106,14 @@ func (s *Service) CreateJob(in CreateJobInput) (*domain.ReviewJob, error) {
 			return s.store.Get(rec.JobID)
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	j := domain.NewJob(newID(), in.ProgramTitle, in.Language, in.DeliveryBatch, in.RuleSet, in.Actor, in.DurationMs, s.now())
 	if err := s.store.Create(j, key, journal.IdempotencyRecord{Actor: in.Actor, Digest: digest, JobID: j.ID}); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if in.IdempotencyKey != "" {

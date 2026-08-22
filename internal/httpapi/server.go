@@ -141,7 +141,7 @@ func (s *Server) jobs(w http.ResponseWriter, r *http.Request) {
 		fail(w, fmt.Errorf("%w:创建必须提供 Idempotency-Key", domain.ErrValidation))
 		return
 	}
-	j, e := s.app.CreateJob(in)
+	j, e := s.app.CreateJobContext(r.Context(), in)
 	if e != nil {
 		fail(w, e)
 		return
