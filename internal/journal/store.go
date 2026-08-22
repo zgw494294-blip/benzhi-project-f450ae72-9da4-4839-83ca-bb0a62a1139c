@@ -107,7 +107,15 @@ func (s *Store) Idempotency(key string) (IdempotencyRecord, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	v, ok := s.idempotency[key]
-	return v, ok
+	return cloneIdempotencyRecord(v), ok
+}
+
+func cloneIdempotencyRecord(in IdempotencyRecord) IdempotencyRecord {
+	out := in
+	if in.JobResult != nil {
+		out.JobResult = domain.CloneJob(in.JobResult)
+	}
+	return out
 }
 func (s *Store) Get(id string) (*domain.ReviewJob, error) {
 	s.mu.RLock()
