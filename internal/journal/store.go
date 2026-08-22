@@ -9,14 +9,15 @@ import (
 )
 
 type Store struct {
-	mu          sync.RWMutex
-	jobs        map[string]*domain.ReviewJob
-	credentials map[string]domain.Credential
-	idempotency map[string]IdempotencyRecord
-	events      []domain.Event
-	path        string
-	seq         int64
-	prev        string
+	mu            sync.RWMutex
+	jobs          map[string]*domain.ReviewJob
+	credentials   map[string]domain.Credential
+	idempotency   map[string]IdempotencyRecord
+	events        []domain.Event
+	path          string
+	integrityFile *os.File
+	seq           int64
+	prev          string
 }
 type IdempotencyRecord struct {
 	Actor      string                 `json:"actor"`
