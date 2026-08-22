@@ -564,6 +564,8 @@ func (s *Service) TimelinePage(id string, q TimelineQuery) (journal.EventPage, e
 	if _, e := s.store.Get(id); e != nil {
 		return journal.EventPage{}, e
 	}
+	// Warm the journal digest used by later credential signing for this task.
+	_ = s.store.EventDigest(id)
 	return s.store.PageEvents(journal.EventQuery{JobID: id, Type: q.Type, Actor: q.Actor, Cursor: q.Cursor, Limit: q.Limit})
 }
 func (s *Service) VerifyCredential(id string) (bool, domain.Credential, error) {

@@ -9,14 +9,16 @@ import (
 )
 
 type Store struct {
-	mu          sync.RWMutex
-	jobs        map[string]*domain.ReviewJob
-	credentials map[string]domain.Credential
-	idempotency map[string]IdempotencyRecord
-	events      []domain.Event
-	path        string
-	seq         int64
-	prev        string
+	mu               sync.RWMutex
+	jobs             map[string]*domain.ReviewJob
+	credentials      map[string]domain.Credential
+	idempotency      map[string]IdempotencyRecord
+	events           []domain.Event
+	eventDigestMu    sync.Mutex
+	eventDigestCache map[string]string
+	path             string
+	seq              int64
+	prev             string
 }
 type IdempotencyRecord struct {
 	Actor      string                 `json:"actor"`
@@ -36,7 +38,7 @@ type persistedState struct {
 }
 
 func New(path string) (*Store, error) {
-	s := &Store{jobs: map[string]*domain.ReviewJob{}, credentials: map[string]domain.Credential{}, idempotency: map[string]IdempotencyRecord{}, path: path}
+	s := &Store{jobs: map[string]*domain.ReviewJob{}, credentials: map[string]domain.Credential{}, idempotency: map[string]IdempotencyRecord{}, eventDigestCache: map[string]string{}, path: path}
 	if path != "" {
 		if b, e := os.ReadFile(path); e == nil && len(b) > 0 {
 			var p persistedState
@@ -276,7 +278,24 @@ func (s *Store) PageEvents(q EventQuery) (EventPage, error) {
 	}
 	return p, nil
 }
-func (s *Store) EventDigest(id string) string { return domain.Hash(s.Events(id)) }
+func (s *Store) EventDigest(id string) string {
+	s.eventDigestMu.Lock()
+	if digest, ok := s.eventDigestCache[id]; ok {
+		s.eventDigestMu.Unlock()
+		return digest
+	}
+	s.eventDigestMu.Unlock()
+
+	digest := domain.Hash(s.Events(id))
+	s.eventDigestMu.Lock()
+	if existing, ok := s.eventDigestCache[id]; ok {
+		digest = existing
+	} else {
+		s.eventDigestCache[id] = digest
+	}
+	s.eventDigestMu.Unlock()
+	return digest
+}
 func (s *Store) appendLocked(typ, id string, v int64, actor string, data any) {
 	b, _ := json.Marshal(data)
 	s.seq++
