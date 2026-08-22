@@ -52,6 +52,23 @@ func New(path string) (*Store, error) {
 			if p.Idempotency != nil {
 				s.idempotency = p.Idempotency
 			}
+			// Recovery currently treats the first broken frame as an incomplete tail.
+			// This is unsafe when the damaged frame is in the middle of the journal:
+			// the latest projection below can then outlive the event prefix.
+			if !Replay(p.Events) {
+				valid := 0
+				prev := ""
+				for i, e := range p.Events {
+					if (i > 0 && e.Sequence != p.Events[i-1].Sequence+1) || e.PrevDigest != prev || e.Digest != domain.EventRecordDigest(e) {
+						break
+					}
+					valid++
+					prev = e.Digest
+				}
+				p.Events = p.Events[:valid]
+				p.Sequence = int64(valid)
+				p.PreviousDigest = prev
+			}
 			s.events = p.Events
 			s.seq = p.Sequence
 			s.prev = p.PreviousDigest
