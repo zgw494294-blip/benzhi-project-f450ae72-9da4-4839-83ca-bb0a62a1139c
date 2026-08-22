@@ -144,6 +144,7 @@ func (s *Service) BatchCues(id string, ops []domain.CueEdit, expected int64, act
 			return j, rec.CueResults, nil
 		}
 	}
+	prepareCueEdits(ops)
 	res, e := j.ApplyCueEdits(ops, expected)
 	if e != nil {
 		return nil, nil, e
@@ -158,6 +159,21 @@ func (s *Service) BatchCues(id string, ops []domain.CueEdit, expected int64, act
 		return nil, nil, e
 	}
 	return j, res, nil
+}
+
+func prepareCueEdits(ops []domain.CueEdit) {
+	for i := range ops {
+		if strings.TrimSpace(ops[i].Op) != "" {
+			continue
+		}
+		if strings.TrimSpace(ops[i].Action) != "" {
+			ops[i].Op = ops[i].Action
+			continue
+		}
+		if strings.TrimSpace(ops[i].Type) != "" {
+			ops[i].Op = ops[i].Type
+		}
+	}
 }
 func (s *Service) PreviewCues(id string, ops []domain.CueEdit, expected int64) (domain.CueImportPreview, error) {
 	s.mu.Lock()
