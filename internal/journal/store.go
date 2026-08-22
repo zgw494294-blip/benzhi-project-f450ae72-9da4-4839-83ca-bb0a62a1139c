@@ -175,8 +175,6 @@ func (s *Store) CommitCredential(j *domain.ReviewJob, c domain.Credential, key s
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	oldJob := s.jobs[j.ID]
-	oldCred, hadCred := s.credentials[j.ID]
-	oldRec, hadRec := s.idempotency[key]
 	oldEvents, oldSeq, oldPrev := len(s.events), s.seq, s.prev
 	s.jobs[j.ID] = clone(j)
 	s.credentials[j.ID] = c
@@ -186,18 +184,6 @@ func (s *Store) CommitCredential(j *domain.ReviewJob, c domain.Credential, key s
 	s.appendLocked("credential.issued", j.ID, j.Version, actor, c)
 	if e := s.persistLocked(); e != nil {
 		s.jobs[j.ID] = oldJob
-		if hadCred {
-			s.credentials[j.ID] = oldCred
-		} else {
-			delete(s.credentials, j.ID)
-		}
-		if key != "" {
-			if hadRec {
-				s.idempotency[key] = oldRec
-			} else {
-				delete(s.idempotency, key)
-			}
-		}
 		s.events = s.events[:oldEvents]
 		s.seq = oldSeq
 		s.prev = oldPrev
